@@ -1,0 +1,39 @@
+graph TB
+    C[乱数 r]
+    G[生成元 G]
+    N1[曲線の位数 n]
+    F[秘密鍵 k]
+    PK[公開鍵 P = k * G]
+    F -.->|送信| PK
+
+    subgraph 署名作成
+        A[メッセージ] --> B[ハッシュ z]
+        C & G --> D[r * G]
+        D --> E[x座標 R]
+        E --> K[署名 R, s]
+        B & F & E --> H[s = r^-1 * z + R * k mod n]
+        H --> K
+    end
+    
+    subgraph 署名検証
+        A -->|送信| L[メッセージ]
+        L --> M[ハッシュ z]
+        K -->|送信| N[署名 R, s]
+        N --> O[s^-1 mod n]
+        M & O --> P[u1 = z * s^-1 mod n]
+        N & O --> Q[u2 = R * s^-1 mod n]
+        P & G --> R[u1 * G]
+        Q & PK --> S[u2 * P]
+        R & S --> T[X = u1 * G + u2 * P]
+        T --> U[Xのx座標]
+        U & N --> V{X_x == R ?}
+        V -->|はい| W[署名有効]
+        V -->|いいえ| X[署名無効]
+    end
+
+    G --> D
+    G --> R
+    N1 -.-> H
+    N1 -.-> O
+    F --> H
+    PK --> S
