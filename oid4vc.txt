@@ -17,3 +17,62 @@
 システムのスケーラビリティ	デバイス数やユーザー数の増加に対応するシステムの拡張性。	△（集中型でスケールしにくい）	◯	◯
 コンプライアンスと規制遵守	規制対応（GDPR、eIDASなど）	データ最小化、ユーザー同意管理、アクセス権管理などの国際規制への対応度。	◯	◯	◯
 セキュリティ・コンプライアンスの要件対応度	データ保護法や企業のセキュリティ基準を満たしているかどうか。	◯	◯	◯
+
+
+
+graph TD
+    A[運転免許証の取得] --> B[OID4VCI: 発行]
+    B --> C[スマートフォンのウォレットに保存]
+    C --> D[レンタカー利用]
+    D --> E[OID4VP: 提示]
+    D --> F[SIOPv2: 認証]
+    E --> G[レンタカー会社による検証]
+    F --> G
+    G --> H[車両の貸出]
+
+
+
+
+
+sequenceDiagram
+    participant U as ユーザー（太郎）
+    participant W as ウォレットアプリ
+    participant DMV as 運転免許センター
+    participant RC as レンタカー会社
+
+    rect rgb(200, 230, 200)
+    Note over U,DMV: OID4VCIのスコープ
+    U->>DMV: デジタル免許証発行要求
+    DMV->>U: 認証要求
+    U->>DMV: 認証情報提供
+    DMV->>DMV: 認証検証
+    DMV->>W: 証明書メタデータ送信
+    W->>DMV: 証明書要求
+    DMV->>DMV: 証明書生成
+    DMV->>W: デジタル運転免許証発行
+    W->>W: 証明書保存
+    end
+
+    Note over U,W: 時間経過
+
+    rect rgb(230, 200, 230)
+    Note over U,RC: SIOPv2のスコープ
+    U->>RC: レンタカー予約
+    RC->>W: 認証要求
+    W->>U: 生体認証要求
+    U->>W: 生体認証提供
+    W->>W: Self-signed ID Token生成
+    W->>RC: ID Token送信
+    RC->>RC: ID Token検証
+    end
+
+    rect rgb(200, 230, 230)
+    Note over U,RC: OID4VPのスコープ
+    RC->>W: 運転免許証提示要求
+    W->>W: 要求された証明書選択
+    W->>W: Verifiable Presentation作成
+    W->>RC: Verifiable Presentation送信
+    RC->>RC: プレゼンテーション検証
+    end
+
+    RC->>U: レンタカー利用許可
