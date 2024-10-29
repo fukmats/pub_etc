@@ -3,6 +3,8 @@ import com.nimbusds.jose.crypto.*;
 import com.nimbusds.jwt.*;
 import com.nimbusds.jose.jwk.*;
 import java.math.BigInteger;
+import java.security.*;
+import java.security.spec.ECGenParameterSpec;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.Base64;
@@ -15,25 +17,21 @@ public class FixedECKeyJWTExample {
             String fixedPrivateKeyHex = "f57c7ea29b9d13f3a9eabcde1234567890abcdef12345678";
             BigInteger privateKeyValue = new BigInteger(fixedPrivateKeyHex, 16);
 
-            // 楕円曲線の秘密鍵と公開鍵を生成 (固定された秘密鍵を使用)
-            ECKey ecJWK = new ECKey.Builder(Curve.P_256, privateKeyValue)  // カーブと秘密鍵の値を指定
-                .keyUse(KeyUse.SIGNATURE)  // 署名用として使用
-                .keyID("123")              // 任意のキーID
-                .build();
+            // 楕円曲線のパラメータを取得（例: P-256）
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
+            ECGenParameterSpec ecGenParameterSpec = new ECGenParameterSpec("secp256r1");
+            keyPairGenerator.initialize(ecGenParameterSpec);
+            KeyPair keyPair = keyPairGenerator.generateKeyPair();
 
-            // 秘密鍵の取得
-            ECPrivateKey privateKey = ecJWK.toECPrivateKey();
+            // 固定された秘密鍵を生成
+            KeyFactory keyFactory = KeyFactory.getInstance("EC");
+            ECPrivateKey privateKey = (ECPrivateKey) keyFactory.generatePrivate(
+                    new java.security.spec.ECPrivateKeySpec(privateKeyValue, ((ECPublicKey) keyPair.getPublic()).getParams()));
+
+            // 公開鍵を固定された秘密鍵に基づいて計算
+            ECPublicKey publicKey = (ECPublicKey) keyPair.getPublic();
+
             System.out.println("秘密鍵のオブジェクト: " + privateKey);
-
-            // 秘密鍵のS値 (楕円曲線の秘密値) を取得して16進数形式で表示
-            BigInteger s = privateKey.getS();
-            System.out.println("秘密鍵の値 (16進数): " + s.toString(16));
-
-            // Base64エンコード形式での表示
-            System.out.println("秘密鍵の値 (Base64): " + Base64.getEncoder().encodeToString(s.toByteArray()));
-
-            // 公開鍵の取得
-            ECPublicKey publicKey = ecJWK.toECPublicKey();
             System.out.println("公開鍵のオブジェクト: " + publicKey);
 
             // 現在の時間
@@ -53,7 +51,7 @@ public class FixedECKeyJWTExample {
             JWSSigner signer = new ECDSASigner(privateKey);  // 秘密鍵を使って署名を作成
             SignedJWT signedJWT = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.ES256)
-                    .keyID(ecJWK.getKeyID())        // kid
+                    .keyID("123")                  // kid
                     .type(JOSEObjectType.JWT)       // typ
                     .build(),
                 claimsSet);
