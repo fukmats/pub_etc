@@ -17,27 +17,24 @@ public class FixedECKeyJWTExample {
             String fixedPrivateKeyHex = "f57c7ea29b9d13f3a9eabcde1234567890abcdef12345678";
             BigInteger privateKeyValue = new BigInteger(fixedPrivateKeyHex, 16);
 
-            // 楕円曲線のパラメータを取得（例: P-256）
-            AlgorithmParameters parameters = AlgorithmParameters.getInstance("EC");
-            parameters.init(new ECGenParameterSpec("secp256r1"));
-            ECParameterSpec ecParameterSpec = parameters.getParameterSpec(ECParameterSpec.class);
+            // 楕円曲線の鍵ペアジェネレーターを初期化（P-256）
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
+            keyPairGenerator.initialize(ecSpec);
 
-            // 秘密鍵を生成
-            ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(privateKeyValue, ecParameterSpec);
+            // キーペアを生成
+            KeyPair keyPair = keyPairGenerator.generateKeyPair();
+
+            // ECPrivateKeySpecを使って固定の秘密鍵を設定
+            ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(privateKeyValue, ((ECPublicKey) keyPair.getPublic()).getParams());
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
             ECPrivateKey privateKey = (ECPrivateKey) keyFactory.generatePrivate(privateKeySpec);
 
+            // 公開鍵はKeyPairのものを使用する（公開鍵は固定された秘密鍵に基づく）
+            ECPublicKey publicKey = (ECPublicKey) keyPair.getPublic();
+
             System.out.println("秘密鍵のオブジェクト: " + privateKey);
-            System.out.println("秘密鍵のS値 (16進数): " + privateKey.getS().toString(16));
-
-            // 公開鍵を計算
-            ECPoint ecPoint = ecParameterSpec.getGenerator().multiply(privateKeyValue).normalize();
-            ECPublicKeySpec publicKeySpec = new ECPublicKeySpec(ecPoint, ecParameterSpec);
-            ECPublicKey publicKey = (ECPublicKey) keyFactory.generatePublic(publicKeySpec);
-
             System.out.println("公開鍵のオブジェクト: " + publicKey);
-            System.out.println("公開鍵のX座標: " + publicKey.getW().getAffineX().toString(16));
-            System.out.println("公開鍵のY座標: " + publicKey.getW().getAffineY().toString(16));
 
             // 現在の時間
             Date now = new Date();
@@ -64,9 +61,6 @@ public class FixedECKeyJWTExample {
             // 3. 署名を行う
             signedJWT.sign(signer);
 
-            // 署名部分の検証を挟む（デバッグ用）
-            System.out.println("署名の直後の検証: " + signedJWT.verify(new ECDSAVerifier(publicKey)));
-
             // 4. 生成されたJWTを文字列に変換
             String jwtString = signedJWT.serialize();
             System.out.println("生成されたJWT: " + jwtString);
@@ -81,7 +75,7 @@ public class FixedECKeyJWTExample {
             // 3. 署名の検証 (公開鍵を使用)
             JWSVerifier verifier = new ECDSAVerifier(publicKey);
             boolean isSignatureValid = decodedJWT.verify(verifier);
-            System.out.println("最終的な署名の検証結果: " + isSignatureValid);
+            System.out.println("署名の検証結果: " + isSignatureValid);
 
         } catch (Exception e) {
             e.printStackTrace();
