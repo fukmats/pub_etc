@@ -4,7 +4,7 @@ import com.nimbusds.jwt.*;
 import com.nimbusds.jose.jwk.*;
 import java.math.BigInteger;
 import java.security.*;
-import java.security.spec.ECGenParameterSpec;
+import java.security.spec.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.Base64;
@@ -18,18 +18,19 @@ public class FixedECKeyJWTExample {
             BigInteger privateKeyValue = new BigInteger(fixedPrivateKeyHex, 16);
 
             // 楕円曲線のパラメータを取得（例: P-256）
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
-            ECGenParameterSpec ecGenParameterSpec = new ECGenParameterSpec("secp256r1");
-            keyPairGenerator.initialize(ecGenParameterSpec);
-            KeyPair keyPair = keyPairGenerator.generateKeyPair();
+            AlgorithmParameters parameters = AlgorithmParameters.getInstance("EC");
+            parameters.init(new ECGenParameterSpec("secp256r1"));
+            ECParameterSpec ecParameterSpec = parameters.getParameterSpec(ECParameterSpec.class);
 
-            // 固定された秘密鍵を生成
+            // 秘密鍵を生成
+            ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(privateKeyValue, ecParameterSpec);
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
-            ECPrivateKey privateKey = (ECPrivateKey) keyFactory.generatePrivate(
-                    new java.security.spec.ECPrivateKeySpec(privateKeyValue, ((ECPublicKey) keyPair.getPublic()).getParams()));
+            ECPrivateKey privateKey = (ECPrivateKey) keyFactory.generatePrivate(privateKeySpec);
 
-            // 公開鍵を固定された秘密鍵に基づいて計算
-            ECPublicKey publicKey = (ECPublicKey) keyPair.getPublic();
+            // 公開鍵を計算
+            ECPoint ecPoint = ecParameterSpec.getGenerator().multiply(privateKeyValue).normalize();
+            ECPublicKeySpec publicKeySpec = new ECPublicKeySpec(ecPoint, ecParameterSpec);
+            ECPublicKey publicKey = (ECPublicKey) keyFactory.generatePublic(publicKeySpec);
 
             System.out.println("秘密鍵のオブジェクト: " + privateKey);
             System.out.println("公開鍵のオブジェクト: " + publicKey);
